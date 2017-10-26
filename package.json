@@ -1,0 +1,27 @@
+{
+  "name": "civics-table",
+  "version": "1.0.0",
+  "description": "Table of user data with computed columns using Google Civics API",
+  "main": "src/index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "elm-app test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CrockAgile/civics-table.git"
+  },
+  "keywords": [
+    "civics",
+    "table",
+    "sheet"
+  ],
+  "author": "Jeff Crocker <crockagile@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CrockAgile/civics-table/issues"
+  },
+  "homepage": "https://github.com/CrockAgile/civics-table#readme"
+}
