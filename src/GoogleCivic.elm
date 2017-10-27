@@ -1,16 +1,46 @@
-module GoogleCivic exposing (..)
+port module GoogleCivic
+    exposing
+        ( OpenCivicBoundary
+        , decodeOpenCivicBoundary
+        )
+
+import Json.Decode exposing (string, Decoder, andThen, succeed, fail)
+import Json.Decode.Pipeline exposing (decode, required, resolve)
+import List exposing (head, tail)
 
 
-type alias OpenCivicDataType =
-    { boundary : String
-    , id : Int
+type alias OpenCivicBoundary =
+    { kind : String
+    , identifier : String
     }
+
+
+decodeOpenCivicBoundary : Decoder OpenCivicBoundary
+decodeOpenCivicBoundary =
+    let
+        toSplitBoundary : String -> Decoder OpenCivicBoundary
+        toSplitBoundary boundaryString =
+            let
+                splitBoundary =
+                    String.split ":" boundaryString
+            in
+                case splitBoundary of
+                    [ kind, identifier ] ->
+                        if List.any String.isEmpty splitBoundary then
+                            fail "OpenCivic boundary has invalid format"
+                        else
+                            succeed (OpenCivicBoundary kind identifier)
+
+                    _ ->
+                        fail "OpenCivic boundary has invalid format"
+    in
+        string |> andThen toSplitBoundary
 
 
 type alias OpenCivicDataId =
     { country : String
     , countryCode : String
-    , types : List OpenCivicDataType
+    , types : List OpenCivicBoundary
     }
 
 
@@ -69,7 +99,7 @@ type alias Address =
     , line3 : Maybe String
     , locationName : String
     , state : String
-    , zip : String
+    , zipCode : String
     }
 
 

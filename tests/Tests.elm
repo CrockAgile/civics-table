@@ -1,16 +1,35 @@
 module Tests exposing (..)
 
 import Test exposing (..)
+import Fuzz exposing (string)
 import Expect
+import GoogleCivic exposing (..)
+import Json.Decode exposing (decodeString)
 
 
-all : Test
-all =
-    describe "A Test Suite"
-        [ test "Addition" <|
-            \_ ->
-                Expect.equal 10 (3 + 7)
-        , test "String.left" <|
-            \_ ->
-                Expect.equal "a" (String.left 1 "abcdefg")
+decoders : Test
+decoders =
+    describe "Google civic data decoders"
+        [ describe "OpenCivic boundary decoder"
+            [ test "Oregon boundary" <|
+                \_ ->
+                    decodeString decodeOpenCivicBoundary "\"state:or\""
+                        |> Expect.equal (Ok (OpenCivicBoundary "state" "or"))
+            , test "4th circuit court" <|
+                \_ ->
+                    decodeString decodeOpenCivicBoundary "\"circuit_court:4\""
+                        |> Expect.equal (Ok (OpenCivicBoundary "circuit_court" "4"))
+            , test "circuit court without identifier" <|
+                \_ ->
+                    decodeString decodeOpenCivicBoundary "\"circuit_court:\""
+                        |> Expect.err
+            , test "identifier without boundary type" <|
+                \_ ->
+                    decodeString decodeOpenCivicBoundary "\":12\""
+                        |> Expect.err
+            , test "empty string" <|
+                \_ ->
+                    decodeString decodeOpenCivicBoundary "\"\""
+                        |> Expect.err
+            ]
         ]
