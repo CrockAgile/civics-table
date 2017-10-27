@@ -19,7 +19,7 @@ decoders =
                 \_ ->
                     decodeString decodeOpenCivicBoundary "\"circuit_court:4\""
                         |> Expect.equal (Ok (OpenCivicBoundary "circuit_court" "4"))
-            , test "circuit court without identifier" <|
+            , test "boundary type without identifier" <|
                 \_ ->
                     decodeString decodeOpenCivicBoundary "\"circuit_court:\""
                         |> Expect.err
