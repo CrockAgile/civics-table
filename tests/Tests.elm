@@ -32,4 +32,19 @@ decoders =
                     decodeString decodeOpenCivicBoundary "\"\""
                         |> Expect.err
             ]
+        , describe "OpenCivic identifier decoder"
+            -- ocd-division/country:us/state:or/circuit_court:4"
+            [ test "Oregon 4th circuit court identifier" <|
+                \_ ->
+                    let
+                        stateBoundary =
+                            OpenCivicBoundary "state" "or"
+
+                        civicBoundary =
+                            OpenCivicBoundary "circuit_court" "4"
+                    in
+                        decodeString decodeOpenCivicDataId "\"ocd-division/country:us/state:or/circuit_court:4\""
+                            |> Expect.equal
+                                (Ok (OpenCivicDataId "us" [ stateBoundary, civicBoundary ]))
+            ]
         ]

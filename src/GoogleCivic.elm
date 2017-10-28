@@ -2,9 +2,11 @@ port module GoogleCivic
     exposing
         ( OpenCivicBoundary
         , decodeOpenCivicBoundary
+        , OpenCivicDataId
+        , decodeOpenCivicDataId
         )
 
-import Json.Decode exposing (string, Decoder, andThen, succeed, fail)
+import Json.Decode exposing (string, list, Decoder, andThen, succeed, fail, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, resolve)
 import List exposing (head, tail)
 
@@ -38,10 +40,70 @@ decodeOpenCivicBoundary =
 
 
 type alias OpenCivicDataId =
-    { country : String
-    , countryCode : String
-    , types : List OpenCivicBoundary
+    { countryCode : String
+    , boundaries : List OpenCivicBoundary
     }
+
+
+decodeOpenCivicDataId : Decoder OpenCivicDataId
+decodeOpenCivicDataId =
+    let
+        prefix =
+            "ocd-division/country:"
+
+        prefixEnd =
+            String.length prefix
+
+        boundaryStart =
+            prefixEnd + 2
+
+        toDataId : String -> Decoder OpenCivicDataId
+        toDataId idString =
+            let
+                countryCode =
+                    String.slice prefixEnd boundaryStart idString
+
+                isOk result =
+                    case result of
+                        Ok _ ->
+                            True
+
+                        Err _ ->
+                            False
+
+                isMaybeOk result =
+                    case result of
+                        Ok value ->
+                            Just value
+
+                        Err _ ->
+                            Nothing
+
+                ( boundaryOks, boundaryErrors ) =
+                    idString
+                        |> String.slice boundaryStart 0
+                        |> String.split "/"
+                        |> List.map (decodeString decodeOpenCivicBoundary)
+                        |> List.partition isOk
+
+                boundaries =
+                    boundaryOks
+                        |> List.filterMap isMaybeOk
+            in
+                if String.startsWith prefix idString then
+                    case boundaryErrors of
+                        [] ->
+                            succeed (OpenCivicDataId countryCode boundaries)
+
+                        (Ok _) :: _ ->
+                            fail "impossible"
+
+                        (Err error) :: _ ->
+                            fail error
+                else
+                    fail "OpenCivicId starts with invalid format"
+    in
+        string |> andThen toDataId
 
 
 type alias Division =
