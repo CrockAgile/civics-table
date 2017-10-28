@@ -1,14 +1,15 @@
 port module GoogleCivic
     exposing
         ( OpenCivicBoundary
-        , decodeOpenCivicBoundary
+        , stringToOpenCivicBoundary
         , OpenCivicDataId
         , decodeOpenCivicDataId
         )
 
-import Json.Decode exposing (string, list, Decoder, andThen, succeed, fail, decodeString)
+import Json.Decode exposing (string, list, Decoder, succeed, fail, map)
 import Json.Decode.Pipeline exposing (decode, required, resolve)
 import List exposing (head, tail)
+import Regex
 
 
 type alias OpenCivicBoundary =
@@ -17,26 +18,21 @@ type alias OpenCivicBoundary =
     }
 
 
-decodeOpenCivicBoundary : Decoder OpenCivicBoundary
-decodeOpenCivicBoundary =
+stringToOpenCivicBoundary : String -> Result String OpenCivicBoundary
+stringToOpenCivicBoundary boundaryString =
     let
-        toSplitBoundary : String -> Decoder OpenCivicBoundary
-        toSplitBoundary boundaryString =
-            let
-                splitBoundary =
-                    String.split ":" boundaryString
-            in
-                case splitBoundary of
-                    [ kind, identifier ] ->
-                        if List.any String.isEmpty splitBoundary then
-                            fail "OpenCivic boundary has invalid format"
-                        else
-                            succeed (OpenCivicBoundary kind identifier)
-
-                    _ ->
-                        fail "OpenCivic boundary has invalid format"
+        splitBoundary =
+            String.split ":" boundaryString
     in
-        string |> andThen toSplitBoundary
+        case splitBoundary of
+            [ kind, identifier ] ->
+                if List.any String.isEmpty splitBoundary then
+                    Err ("OpenCivic boundary has empty field: " ++ boundaryString)
+                else
+                    Ok (OpenCivicBoundary kind identifier)
+
+            _ ->
+                Err ("OpenCivic boundary has invalid format: " ++ boundaryString)
 
 
 type alias OpenCivicDataId =
@@ -48,62 +44,47 @@ type alias OpenCivicDataId =
 decodeOpenCivicDataId : Decoder OpenCivicDataId
 decodeOpenCivicDataId =
     let
-        prefix =
-            "ocd-division/country:"
-
-        prefixEnd =
-            String.length prefix
-
-        boundaryStart =
-            prefixEnd + 2
-
-        toDataId : String -> Decoder OpenCivicDataId
-        toDataId idString =
+        -- ocd-division/country:us/state:or/circuit_court:4"
+        decodeId idString =
             let
-                countryCode =
-                    String.slice prefixEnd boundaryStart idString
+                idPrefix =
+                    "ocd-division/country:"
 
-                isOk result =
-                    case result of
-                        Ok _ ->
-                            True
+                idPrefixLength =
+                    String.length idPrefix
 
-                        Err _ ->
-                            False
+                idRegex =
+                    Regex.regex ("^" ++ idPrefix ++ "\\w{2}(/\\w+:\\w+)*$")
 
-                isMaybeOk result =
-                    case result of
-                        Ok value ->
-                            Just value
-
-                        Err _ ->
-                            Nothing
-
-                ( boundaryOks, boundaryErrors ) =
-                    idString
-                        |> String.slice boundaryStart 0
-                        |> String.split "/"
-                        |> List.map (decodeString decodeOpenCivicBoundary)
-                        |> List.partition isOk
-
-                boundaries =
-                    boundaryOks
-                        |> List.filterMap isMaybeOk
+                idMatch =
+                    Regex.find (Regex.AtMost 1) idRegex idString
+                        |> List.head
             in
-                if String.startsWith prefix idString then
-                    case boundaryErrors of
-                        [] ->
-                            succeed (OpenCivicDataId countryCode boundaries)
+                case idMatch of
+                    Nothing ->
+                        fail ("OpenCivic identifier has invalid format: " ++ idString)
 
-                        (Ok _) :: _ ->
-                            fail "impossible"
+                    Just match ->
+                        let
+                            countryCode =
+                                String.slice idPrefixLength (idPrefixLength + 2) idString
 
-                        (Err error) :: _ ->
-                            fail error
-                else
-                    fail "OpenCivicId starts with invalid format"
+                            boundariesResult =
+                                idString
+                                    |> String.slice (idPrefixLength + 3) (String.length idString)
+                                    |> String.split "/"
+                                    |> List.filter (not << String.isEmpty)
+                                    |> List.map stringToOpenCivicBoundary
+                                    |> List.foldr (Result.map2 (::)) (Ok [])
+                        in
+                            case boundariesResult of
+                                Err error ->
+                                    fail error
+
+                                Ok boundaries ->
+                                    succeed { countryCode = countryCode, boundaries = boundaries }
     in
-        string |> andThen toDataId
+        string |> Json.Decode.andThen decodeId
 
 
 type alias Division =

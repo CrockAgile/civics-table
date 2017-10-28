@@ -10,41 +10,92 @@ import Json.Decode exposing (decodeString)
 decoders : Test
 decoders =
     describe "Google civic data decoders"
-        [ describe "OpenCivic boundary decoder"
+        [ describe "stringToOpenCivicBoundary"
             [ test "Oregon boundary" <|
                 \_ ->
-                    decodeString decodeOpenCivicBoundary "\"state:or\""
+                    stringToOpenCivicBoundary "state:or"
                         |> Expect.equal (Ok (OpenCivicBoundary "state" "or"))
             , test "4th circuit court" <|
                 \_ ->
-                    decodeString decodeOpenCivicBoundary "\"circuit_court:4\""
+                    stringToOpenCivicBoundary "circuit_court:4"
                         |> Expect.equal (Ok (OpenCivicBoundary "circuit_court" "4"))
             , test "boundary type without identifier" <|
                 \_ ->
-                    decodeString decodeOpenCivicBoundary "\"circuit_court:\""
+                    stringToOpenCivicBoundary "circuit_court:"
                         |> Expect.err
             , test "identifier without boundary type" <|
                 \_ ->
-                    decodeString decodeOpenCivicBoundary "\":12\""
+                    stringToOpenCivicBoundary ":12"
                         |> Expect.err
             , test "empty string" <|
                 \_ ->
-                    decodeString decodeOpenCivicBoundary "\"\""
+                    stringToOpenCivicBoundary ""
                         |> Expect.err
             ]
         , describe "OpenCivic identifier decoder"
-            -- ocd-division/country:us/state:or/circuit_court:4"
-            [ test "Oregon 4th circuit court identifier" <|
+            [ test "minimal identifier" <|
+                \_ ->
+                    decodeString decodeOpenCivicDataId "\"ocd-division/country:us\""
+                        |> Expect.equal
+                            (Ok (OpenCivicDataId "us" []))
+            , test "empty identifier" <|
+                \_ ->
+                    decodeString decodeOpenCivicDataId "\"\""
+                        |> Expect.err
+            , test "Oregon 4th circuit court identifier" <|
                 \_ ->
                     let
-                        stateBoundary =
-                            OpenCivicBoundary "state" "or"
+                        boundariesString =
+                            "state:or/circuit_court:4"
 
-                        civicBoundary =
-                            OpenCivicBoundary "circuit_court" "4"
+                        isMaybeOk result =
+                            case result of
+                                Ok value ->
+                                    Just value
+
+                                Err _ ->
+                                    Nothing
+
+                        boundaries =
+                            boundariesString
+                                |> String.split "/"
+                                |> List.map stringToOpenCivicBoundary
+                                |> List.filterMap isMaybeOk
+
+                        idString =
+                            "\"ocd-division/country:us/"
+                                ++ boundariesString
+                                ++ "\""
                     in
-                        decodeString decodeOpenCivicDataId "\"ocd-division/country:us/state:or/circuit_court:4\""
+                        decodeString decodeOpenCivicDataId idString
                             |> Expect.equal
-                                (Ok (OpenCivicDataId "us" [ stateBoundary, civicBoundary ]))
+                                (Ok (OpenCivicDataId "us" boundaries))
+            , test "identifier missing country code" <|
+                \_ ->
+                    let
+                        boundariesString =
+                            "state:or/circuit_court:4"
+
+                        isMaybeOk result =
+                            case result of
+                                Ok value ->
+                                    Just value
+
+                                Err _ ->
+                                    Nothing
+
+                        boundaries =
+                            boundariesString
+                                |> String.split "/"
+                                |> List.map stringToOpenCivicBoundary
+                                |> List.filterMap isMaybeOk
+
+                        idString =
+                            "\"ocd-division/country:/"
+                                ++ boundariesString
+                                ++ "\""
+                    in
+                        decodeString decodeOpenCivicDataId idString
+                            |> Expect.err
             ]
         ]
