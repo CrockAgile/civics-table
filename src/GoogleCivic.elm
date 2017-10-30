@@ -44,7 +44,6 @@ type alias OpenCivicDataId =
 decodeOpenCivicDataId : Decoder OpenCivicDataId
 decodeOpenCivicDataId =
     let
-        -- ocd-division/country:us/state:or/circuit_court:4"
         decodeId idString =
             let
                 idPrefix =
@@ -89,7 +88,7 @@ decodeOpenCivicDataId =
 
 type alias Division =
     { name : String
-    , alsoKnownAs : List (Maybe String)
+    , alsoKnownAs : List String
     , officeIndices : List Int
     }
 
