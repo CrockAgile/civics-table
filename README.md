@@ -1,5 +1,9 @@
 # Civics Table
 
+## Work Suspended
+
+Work on this project has been suspended until a full assessment of Google's Apps Script is completed.
+
 Table of user data with computed columns using [Google Civic API Representatives Resource][civic-reps]
 
 <hr />
